@@ -65,7 +65,7 @@ match inf[0]:
             print("Некорректный ввод аргументов")
     case 'best':
         if len(inf)==3 and (inf[1], inf[2]) in best_scores:
-            print(f'Лучшие попытки студента {inf[1]} по лабораторной {inf[2]}')
+            print(f'Лучшая попытка студента {inf[1]} по лабораторной {inf[2]}')
             print(best_scores[(inf[1], inf[2])])
         else:
             print("Некорректный ввод аргументов")
