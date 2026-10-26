@@ -380,3 +380,157 @@ for r in results:
 Бинарный поиск: O(log n) - в худшем случае log n + 1 сравнений
 
 ---
+
+## Задание 3. Коллекции и выбор структуры данных
+
+Создайте `task_3.py`. Используйте данные о сдаче лабораторных работ:
+
+```python
+submissions = [
+    ("anna", "lab_01", 5),
+    ("boris", "lab_01", 4),
+    ("anna", "lab_02", 5),
+    ("daria", "lab_01", 3),
+    ("boris", "lab_02", 5),
+    ("anna", "lab_01", 4),
+]
+```
+
+Каждый кортеж содержит имя студента, идентификатор работы и результат попытки.
+
+Постройте:
+
+1. Множество всех студентов.
+2. Множество всех сданных лабораторных работ.
+3. Словарь, в котором каждому студенту соответствует список его попыток.
+4. Словарь лучших результатов по ключу `(student, laboratory)`.
+5. Словарь количества попыток для каждой пары `(student, laboratory)`.
+
+Выведите студентов, которые сдавали обе работы, используя операции над множествами.
+```python
+# 1) Множество всех студентов (уникальные имена)
+students = {s[0] for s in submissions}
+
+# 2) Множество всех сданных лабораторных работ (уникальные идентификаторы)
+labs = {s[1] for s in submissions}
+
+# 3) Словарь: студент -> список его попыток
+attempts_by_student = {}
+for s in submissions:
+    if s[0] not in attempts_by_student:
+        attempts_by_student[s[0]] = []
+    attempts_by_student[s[0]].append(s)
+
+# 4) Словарь: (студент, лабораторная) -> лучший балл
+best_scores = {}
+for s in submissions:
+    key = (s[0], s[1])
+    best_scores[key] = max(best_scores.get(key, -1), s[2])
+
+# 5) Словарь: (студент, лабораторная) -> количество попыток
+attempt_counts = {}
+for s in submissions:
+    key = (s[0], s[1])
+    attempt_counts[key] = attempt_counts.get(key, 0) + 1
+
+# Словарь "лабораторная -> множество студентов, её сдававших"
+# нужен для поиска студентов, сдавших обе работы.
+students_per_lab = {}
+for s in submissions:
+    students_per_lab.setdefault(s[1], set()).add(s[0])
+
+# Сдали обе работы:
+common_students = set.intersection(*students_per_lab.values())
+print(common_students)
+```
+```
+{'anna', 'boris'}
+```
+Добавьте новую запись и обновите структуры без полного повторного построения. 
+```python
+new_record = ("daria", "lab_02", 4)
+
+students.add(new_record[0])                       # set: O(1)
+labs.add(new_record[1])                           # set: O(1)
+attempts_by_student.setdefault(new_record[0], []).append(new_record)  # dict+list: O(1)
+
+key = (new_record[0], new_record[1])
+best_scores[key] = max(best_scores.get(key, -1), new_record[2])       # dict: O(1)
+attempt_counts[key] = attempt_counts.get(key, 0) + 1                  # dict: O(1)
+students_per_lab.setdefault(new_record[1], set()).add(new_record[0])  # dict+set: O(1)
+```
+
+Объясните, почему:
+
+- множество подходит для хранения уникальных значений;
+
+Множество в Python реализовано на базе хеш-таблицы: при добавлении элемента вычисляется его хеш, и элемент помещается в «корзину». Если элемент с таким хешом и значением уже существует - он игнорируется. Поэтому дубликаты физически не могут появиться, а проверка принадлежности и вставка выполняются за O(1) в среднем.
+
+- кортеж можно использовать как ключ словаря;
+
+Ключом словаря может быть любой хешируемый объект. Хешируемыми в Python являются неизменяемые типы int, str, float, bool, tuple.
+
+- список нельзя использовать как ключ словаря;
+
+Потому что список - изменяемый объект, а значит, нехешируемый (если бы он был хешируемым, его хеш бы изменялся при каждом изменении списка).
+При попытке сделать список ключом получим `TypeError: unhashable type: 'list'`.
+
+- словарь предпочтительнее списка для частого поиска результата по составному ключу.
+Словарь предпочтительнее, потому что проверка вхождения в него занимает O(1), а в списке - O(n).
+
+В `REPORT.md` приведите оценку средней сложности добавления и поиска для использованных коллекций.
+```
+set - добавление (add)  - O(1) 
+set - проверка (in)   - O(1)
+dict - поиск по ключу  - O(1)
+dict  - вставка  - O(1)  
+list - добавление в конец(append)  - O(1) 
+list - поиск элемента (in) - O(n)   
+```
+
+### Практическое расширение
+
+Реализуйте текстовые запросы к построенным данным:
+
+```text
+student anna
+best anna lab_01
+attempts boris lab_02
+completed lab_01
+```
+
+Команда разбирается на части, после чего программа выбирает подходящую операцию и выводит результат. Поддержите неизвестную команду и отсутствие требуемого ключа без аварийного завершения программы.
+
+```python
+inf=list(input().split())
+
+match inf[0]:
+    case 'student':
+        if len(inf)==2 and inf[1] in attempts_by_student:
+            print(f'Все попытки студента {inf[1]}')
+            for _,x,y in attempts_by_student[inf[1]]:
+                print(x,y)
+        else:
+            print("Некорректный ввод аргументов")
+    case 'best':
+        if len(inf)==3 and (inf[1], inf[2]) in best_scores:
+            print(f'Лучшие попытки студента {inf[1]} по лабораторной {inf[2]}')
+            print(best_scores[(inf[1], inf[2])])
+        else:
+            print("Некорректный ввод аргументов")
+    case 'attempts':
+        if len(inf)==3 and (inf[1], inf[2]) in attempt_counts:
+            print(f'Все попытки студента {inf[1]} по лабораторной {inf[2]}')
+            print(attempt_counts[(inf[1], inf[2])])
+        else:
+            print("Некорректный ввод аргументов")
+    case 'completed':
+        if len(inf)==2 and inf[1] in students_per_lab:
+            print(f'Все студенты, кто сдал лабораторную {inf[1]}')
+            print(students_per_lab[inf[1]])
+        else:
+            print("Некорректный ввод аргументов")
+    case _:
+        print("Некорректная команда")
+```
+---
