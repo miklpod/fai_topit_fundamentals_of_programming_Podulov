@@ -157,3 +157,55 @@ run_scope_asserts()
 print("Все assert-проверки пройдены")
 demo()
 
+def add_result(value, results=[]):
+    results.append(value)
+    return results
+print(add_result(5))
+print(add_result(6))
+
+def add_result_fixed(value, results=None):
+    if results is None:
+        results = []
+    results.append(value)
+    return results
+print(add_result_fixed(5))
+print(add_result_fixed(6))
+
+# Практическое расширение
+def apply_to_results(operation, values):
+    result = []
+    for value in values:
+        result.append(operation(value))
+    return result
+
+
+def add_bonus(score):
+    return score + 5
+
+
+def make_threshold_checker(threshold):
+    def check(result):
+        return result >= threshold
+
+    return check
+
+
+results = [48, 62, 75, 90]
+
+print(apply_to_results(add_bonus, results))  # именованная функция
+# [53, 67, 80, 95]
+print(apply_to_results(lambda x: x * 2, results))  # lambda
+# [96, 124, 150, 180]
+
+pass_check = make_threshold_checker(60)
+
+another_check = make_threshold_checker(85)
+
+print(pass_check(70), another_check(70))
+# True False
+print(apply_to_results(pass_check, results))
+# [False, True, True, True]
+print(apply_to_results(another_check, results))
+# [False, False, False, True]
+
+

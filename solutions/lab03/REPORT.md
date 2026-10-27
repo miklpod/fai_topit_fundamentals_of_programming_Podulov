@@ -312,6 +312,19 @@ if not flag:
 
 Реализуйте проверку простоты положительного целого числа. Перебирайте возможные делители только до квадратного корня из числа включительно. Не используйте готовые функции проверки простоты.
 
+```python
+import math
+def is_prime(n):
+    if n < 2:
+        return False
+    for i in range(2, int(math.sqrt(n)) + 1):
+        if n % i == 0:
+            return False
+    return True
+
+p=int(input())
+print(is_prime(p))
+```
 Для каждого реализованного алгоритма укажите временную сложность через `O(...)` и объясните:
 
 - от какого параметра зависит число операций;
@@ -340,6 +353,24 @@ SelectionSort(A[0..n-1]) # A — массив из n элементов
                 minIdx = j
         if minIdx != i then
             swap(A[i], A[minIdx])
+```
+```
+Псевдокод бинарного поиска:
+BinarySearch(A[0..n-1], target)   # A — отсортированный массив из n элементов
+    left = 0
+    right = n - 1
+
+    while left <= right do
+        mid = (left + right) div 2
+
+        if A[mid] == target then
+            return mid
+        else if A[mid] < target then
+            left = mid + 1
+        else
+            right = mid - 1
+
+    return -1
 ```
 ```python
 import random
@@ -774,8 +805,6 @@ arithmetic_mean от [4, 5, 3] = 4.0
 
 Добавьте фрагмент с глобальным именем `course`, внешней функцией и вложенной функцией. Во вложенной функции используйте `nonlocal` для изменения имени из объемлющей области. Не изменяйте глобальное имя.
 
-В `REPORT.md` нарисуйте схему областей видимости и объясните порядок поиска каждого использованного имени.
-
 ```python
 course = "Основы программирования"  # глобальное имя (область Global)
 
@@ -822,7 +851,151 @@ counter после двух вызовов inner_function: 2
 глобальный course без изменений: Основы программирования
 ```
 
-   ```mermaid
-   graph TD
-       A --> B
-   ```
+В `REPORT.md` нарисуйте схему областей видимости и объясните порядок поиска каждого использованного имени.
+
+```mermaid
+graph TB
+    subgraph BI["Built-in B: len, print"]
+        subgraph GL["Global G: course, outer_function"]
+            subgraph EN["Enclosing E: outer_function - counter, inner_function, first, second"]
+                subgraph LO["Local L: inner_function - title"]
+                    NL["nonlocal counter"]
+                end
+            end
+        end
+    end
+```
+
+Правило LEGB: при чтении имени Python ищет его последовательно в областях Local, Enclosing, Global, Built-in и берёт первое найденное. Какая область считается локальной для имени, определяется при компиляции функции: если имя где-то в теле функции присваивается, оно локальное, если нет global или nonlocal.
+
+### Ошибка изменяемого значения по умолчанию
+
+Исследуйте и исправьте функцию:
+
+```python
+def add_result(value, results=[]):
+    results.append(value)
+    return results
+print(add_result(5))
+print(add_result(6))
+```
+```
+[5]
+[5, 6]
+```
+
+Объясните ошибку через жизненный цикл объекта значения по умолчанию.
+
+Значение по умолчанию вычисляется один раз при выполнении def и хранится в самой функции (add_result). Все вызовы без аргумента получают один и тот же объект. Если функция его меняет(так как список изменяемый), изменения остаются до следующего вызова.
+```python
+def add_result_fixed(value, results=None):
+    if results is None:
+        results = []
+    results.append(value)
+    return results
+print(add_result_fixed(5))
+print(add_result_fixed(6))
+```
+```
+[5]
+[6]
+```
+
+### Практическое расширение
+
+Реализуйте функцию `apply_to_results(operation, values)`, принимающую другую функцию и последовательность результатов. Передайте в нее именованную функцию и `lambda`. Затем создайте фабрику `make_threshold_checker(threshold)`, которая возвращает функцию проверки результата. Продемонстрируйте две независимые проверки с разными порогами и объясните, какое значение сохраняется в замыкании.
+
+```python
+def apply_to_results(operation, values):
+    result = []
+    for value in values:
+        result.append(operation(value))
+    return result
+
+
+def add_bonus(score):
+    return score + 5
+
+
+def make_threshold_checker(threshold):
+    def check(result):
+        return result >= threshold
+
+    return check
+
+
+results = [48, 62, 75, 90]
+
+print(apply_to_results(add_bonus, results))  # именованная функция
+# [53, 67, 80, 95]
+print(apply_to_results(lambda x: x * 2, results))  # lambda
+# [96, 124, 150, 180]
+
+pass_check = make_threshold_checker(60)
+another_check = make_threshold_checker(85)
+
+print(pass_check(70), another_check(70))
+# True False
+print(apply_to_results(pass_check, results))
+# [False, True, True, True]
+print(apply_to_results(another_check, results))
+# [False, False, False, True]
+```
+
+Каждая функция сохраняет свой `threshold`: `pass_check` - 60, `another_check` - 85.
+Поэтому проверки работают независимо друг от друга.
+`pass_check` не результат проверки, а ссылка на функцию `check`.
+
+---
+
+## Задание 5. Анализатор учебных результатов
+
+Создайте программу, которая анализирует результаты группы. Исходные данные можно хранить непосредственно в `task_5.py`:
+
+```python
+students = {
+    "Анна": [78, 91, 84, 88],
+    "Борис": [60, 72, 68],
+    "Дарья": [95, 93, 97, 90],
+    "Илья": [55, 61],
+}
+```
+
+### Обязательные функции
+
+Реализуйте:
+
+- `mean(values)` — среднее значение;
+- `minimum(values)` — минимум без использования `min()`;
+- `maximum(values)` — максимум без использования `max()`;
+- `classify(score)` — текстовая категория результата;
+- `student_summary(name, results)` — словарь с итогами одного студента;
+- `group_summary(students)` — общая статистика группы;
+- `find_top_students(students)` — список студентов с наибольшим средним результатом;
+- `format_report(student_data, group_data)` — итоговый текстовый отчет.
+
+Программа должна:
+
+1. Сформировать статистику для каждого студента.
+2. Вывести средний, минимальный и максимальный результат.
+3. Определить категорию по среднему результату.
+4. Найти лидера или нескольких лидеров с одинаковым средним результатом.
+5. Посчитать количество студентов в каждой категории.
+6. Вывести общий средний результат группы.
+7. Сформировать рейтинг без изменения исходного словаря.
+8. Корректно обрабатывать студента с пустым списком результатов с помощью заранее выбранного правила.
+
+### Проверка
+
+Подготовьте не менее шести сценариев:
+
+- обычный набор данных;
+- один студент;
+- несколько лидеров;
+- пустая группа;
+- студент без результатов;
+- граничные значения категорий.
+
+Для каждой публичной функции сформулируйте контракт: допустимые входные данные, результат и возможные особые случаи. Объясните декомпозицию программы и оцените сложность построения общей статистики.
+
+---
