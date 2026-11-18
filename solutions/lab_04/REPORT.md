@@ -581,3 +581,39 @@ Peak memory: 7045.0 KiB
 - идентификаторы не пустые;
 - номер попытки положительный;
 - результат находится в диапазоне от 0 до 100.
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class Submission:
+    student_id: str
+    laboratory_id: str
+    attempt: int
+    score: float
+    comment: str = ""
+    def __post_init__(self) -> None:
+        if not self.student_id.strip():
+            raise ValueError("student_id не должен быть пустым")
+        if not self.laboratory_id.strip():
+            raise ValueError("laboratory_id не должен быть пустым")
+        if self.attempt <= 0:
+            raise ValueError("attempt должен быть положительным числом")
+        if not 0 <= self.score <= 100:
+            raise ValueError("score должен быть в диапазоне от 0 до 100")
+```
+
+### Класс `Student`
+
+Класс должен содержать идентификатор, имя и приватный список работ.
+
+Реализуйте:
+
+- `add_submission()`;
+- свойство `submissions`, не позволяющее изменить внутренний список снаружи;
+- свойство `average_score`;
+- `best_score(laboratory_id)`;
+- `__len__()` — количество попыток;
+- `__iter__()` — обход работ студента;
+- `__str__()` — человекочитаемое представление;
+- `__repr__()` — однозначное отладочное представление.
