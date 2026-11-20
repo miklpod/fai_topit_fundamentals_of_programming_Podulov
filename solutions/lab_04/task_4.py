@@ -182,3 +182,6 @@ print("s999" in course)  # False
 
 target = Submission("s101", "lab_1", attempt=2, score=95.0)
 print(target in s1)      # True
+
+
+print("Конец части 4")
