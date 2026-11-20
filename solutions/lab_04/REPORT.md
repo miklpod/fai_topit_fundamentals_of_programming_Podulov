@@ -617,3 +617,213 @@ class Submission:
 - `__iter__()` — обход работ студента;
 - `__str__()` — человекочитаемое представление;
 - `__repr__()` — однозначное отладочное представление.
+
+```python
+class Student:
+    def __init__(self, student_id: str, student_name: str) -> None:
+        self.student_id = student_id
+        self._submissions: list[Submission] = []
+        self.student_name = student_name
+    def add_submission(self, submission: Submission) -> None:
+        if submission.student_id != self.student_id:
+            raise ValueError(f"ID студента в работе ({submission.student_id}) не совпадает с ID текущего студента ({self.student_id}).")
+        self._submissions.append(submission)
+    @property
+    def submissions(self):
+        """Возвращает кортеж работ, защищая внутренний список от мутаций извне."""
+        return tuple(self._submissions)
+
+    @property
+    def average_score(self):
+        """Вычисляет средний балл по всем попыткам"""
+        if not self._submissions:
+            return 0.0
+        return sum(sub.score for sub in self._submissions) / len(self._submissions)
+
+    def best_score(self, laboratory_id: str):
+        """Возвращает максимальный балл по конкретной лабораторной или None, если попыток не было"""
+        scores = [sub.score for sub in self._submissions if sub.laboratory_id == laboratory_id]
+        return max(scores) if scores else None
+
+    def __len__(self):
+        return len(self._submissions)
+
+    def __iter__(self):
+        return iter(self._submissions)
+
+    def __str__(self):
+        return f"Студент: {self.student_name} (ID: {self.student_id}) - попыток: {len(self)}, средний балл: {self.average_score:.2f}"
+
+    def __repr__(self):
+        return f'Student(student_id: {self.student_id}, student_name: {self.student_name})'
+```
+
+### Класс `Course`
+
+Класс хранит студентов по идентификатору и предоставляет:
+
+- `add_student()`;
+- `get_student()`;
+- `submit()`;
+- `top_students(limit=3)`;
+- `__contains__()` для проверки идентификатора студента;
+- `__len__()` для числа зарегистрированных студентов;
+- `__iter__()` для обхода студентов.
+
+```python
+class Course:
+    def __init__(self, course_id: str) -> None:
+        self._students: dict[str, Student] = {}
+    def add_student(self, student: Student):
+        if student.student_id in self._students:
+            raise ValueError(f"Студент с ID {student.student_id} уже зарегистрирован на курсе.")
+        self._students[student.student_id] = student
+    def get_student(self, student_id: str):
+        if student_id not in self._students:
+            raise KeyError(f"Студент с ID {student_id} не найден на курсе.")
+        return self._students[student_id]
+    def submit(self, submission: Submission):
+        student = self.get_student(submission.student_id)
+        student.add_submission(submission)
+
+    def top_students(self, limit: int = 3):
+        if limit < 0:
+            raise ValueError("Параметр limit не может быть отрицательным.")
+        ranked = sorted(self._students.values(), key=lambda student: student.average_score,reverse=True,)
+        return ranked[:limit]
+    def __len__(self):
+        return len(self._students)
+    def __iter__(self):
+        return iter(self._students)
+    def __contains__(self, student_id: str):
+        return student_id in self._students
+```
+Добавлен альтернативный конструктор `Student.from_full_name(student_id, full_name)` и статический метод проверки корректности идентификатора.
+
+Дополнительно реализован сравнение объектов `Submission` по содержимому и сортировку работ по номеру попытки и результату.
+
+### Анализ архитектуры
+
+В `REPORT.md`:
+
+1. Постройте Mermaid-диаграмму классов.
+
+```mermaid
+classDiagram
+    class Course {
+        -dict~str, Student~ _students
+        +add_student(student: Student) None
+        +get_student(student_id: str) Student
+        +submit(submission: Submission) None
+        +top_students(limit: int = 3) list~Student~
+        +__contains__(student_id: object) bool
+        +__len__() int
+        +__iter__() Iterator~Student~
+    }
+
+    class Student {
+        +str student_id
+        +str name
+        -list~Submission~ _submissions
+        +from_full_name(student_id: str, full_name: str)$ Student
+        +is_valid_id(identifier: str)$ bool
+        +add_submission(submission: Submission) None
+        +submissions() tuple~Submission~
+        +sorted_submissions() list~Submission~
+        +average_score() float
+        +best_score(laboratory_id: str) float | None
+        +__len__() int
+        +__iter__() Iterator~Submission~
+        +__str__() str
+        +__repr__() str
+    }
+
+    class Submission {
+        <<dataclass>>
+        +str student_id
+        +str laboratory_id
+        +int attempt
+        +float score
+        +str comment
+        +__post_init__() None
+        +__lt__(other: object) bool
+    }
+
+    Course o--  Student : хранит
+    Student *-- Submission : содержит
+```
+2. Покажите, где используется композиция.
+
+`Student` -> `Submission`, объект `Student` хранит внутри себя приватный список `_submissions: list[Submission]`. Сданная работа принадлежит студенту и управляется через его методы.
+
+`Course` -> `Student`, объект `Course` хранит словарь `_students: dict[str, Student]` и делегирует студентам обработку их работ в методе `submit()`.
+
+3. Объясните, почему наследование между `Student` и `Submission` было бы некорректным.
+
+Наследование выражает отношение **"является"** (*is-a*)
+*   Студент не является сданной работой, и сданная работа не является студентом.
+*   Между ними отношение **"имеет"** (*has-a*): у одного студента может быть много работ (связь "один ко многим").
+*   Если бы `Student` наследовался от `Submission`, то у студента появились бы бессмысленные атрибуты вроде `attempt` и `laboratory_id`, и он смог бы хранить только одну попытку вместо списка. 
+
+4. Объясните, какие инварианты защищает каждый класс.
+
+| Класс | Защищаемые инварианты |
+|---|---|
+| **`Submission`** | • `student_id` и `laboratory_id` — непустые строки без пробелов.<br>• `attempt` — строго положительное число (больше 0).<br>• `score` — число строго в диапазоне от `0` до `100`.<br>• При `frozen=True` состояние объекта нельзя изменить после создания. |
+| **`Student`** | • `student_id` валиден, `name` не пустое.<br>• В `_submissions` попадают только работы с совпадающим `student_id`.<br>• Внутренний список `_submissions` защищён от мутаций извне (свойство `submissions` возвращает неизменяемый `tuple`, а `sorted_submissions()` возвращает новый список). |
+| **`Course`** | • Уникальность студентов: нельзя зарегистрировать двух студентов с одинаковым `student_id`.<br>• Работу через `submit()` можно сдать только за уже зарегистрированного на курсе студента.<br>• Параметр `limit` в `top_students()` не может быть отрицательным. |
+5. Приведите примеры работы стандартных функций `len()`, `iter()` и оператора `in` с созданными объектами.
+
+```python
+course1 = Course()
+s1 = Student("s101", "Иван Петров")
+s2 = Student("s102", "Анна Смирнова")
+
+course1.add_student(s1)
+course1.add_student(s2)
+
+course1.submit(Submission("s101", "lab_1", attempt=1, score=80.0))
+course1.submit(Submission("s101", "lab_1", attempt=2, score=95.0))
+course1.submit(Submission("s102", "lab_1", attempt=1, score=90.0))
+
+# Функция len() вызывает __len__
+print(len(course1))  # 2 (количество зарегистрированных студентов)
+print(len(s1))      # 2 (количество попыток у студента s1)
+
+# Функция iter() и цикл for вызывают __iter__
+# Обход студентов на курсе
+for student in course:
+    print(student.student_name)
+
+# Явное получение итератора по работам студента
+sub_iterator = iter(s1)
+print(next(sub_iterator))  # Submission(student_id='s101', laboratory_id='lab_1', attempt=1, score=80.0, comment='')
+print(next(sub_iterator))  # Submission(student_id='s101', laboratory_id='lab_1', attempt=2, score=95.0, comment='')
+
+# Оператор in вызывает __contains__
+print("s101" in course)  # True
+print("s999" in course)  # False
+
+target = Submission("s101", "lab_1", attempt=2, score=95.0)
+print(target in s1)      # True
+```
+
+## Задание 5. Расширяемый журнал учебного курса
+
+На основе задания 4 создайте небольшую объектную систему учета активности студентов.
+
+### Иерархия событий
+
+Создайте абстрактный базовый класс `CourseEvent`:
+
+- абстрактное свойство `student_id`;
+- абстрактный метод `describe()`;
+- общее поле или свойство времени создания события.
+
+Создайте наследников:
+
+- `SubmissionEvent` — сдача лабораторной работы;
+- `AttendanceEvent` — посещение занятия;
+- `CommentEvent` — текстовая обратная связь.
+
+Каждый класс должен реализовать `describe()` и содержать только относящиеся к нему данные.
