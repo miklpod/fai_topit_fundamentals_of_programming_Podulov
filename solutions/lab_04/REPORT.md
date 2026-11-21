@@ -915,3 +915,188 @@ class CommentEvent(CourseEvent):
 6. Предоставлять генератор `events_for_student(student_id)`.
 7. Предоставлять генератор `events_by_type(event_type)`.
 8. Предоставлять метод `summary()`, возвращающий агрегированные данные без раскрытия внутреннего изменяемого списка.
+
+```python
+class CourseJournal:
+    """Журнал событий"""
+    def __init__(self):
+        self._events: list[CourseEvent] = []
+
+    def __len__(self):
+        return len(self._events)
+
+    def __iter__(self):
+        return iter(self._events)
+
+    def __getitem__(self, item):
+        return self._events[item]
+
+    def events_for_student(self, student_id):
+        """Генератор событий для конкретного студента."""
+        for event in self._events:
+            if event.student_id == student_id:
+                yield event
+    def events_by_type(self, event_type):
+        """Генератор событий определённого типа"""
+        for event in self._events:
+            if event.type == event_type:
+                yield event
+
+    def __str__(self):
+        return f"Журнал курса ({len(self)} событий)"
+
+    def __repr__(self):
+        return f"CourseJournal(events={len(self)})"
+
+    def summary(self):
+        """Возвращает сводку без раскрытия внутреннего списка"""
+        by_type={}
+        by_student={}
+        for event in self._events:
+            type_name=type(event).__name__
+            by_type[type_name]=by_type.get(type_name,0)+1
+            by_student[type_name]=by_student.get(type_name,0)+1
+        return {
+            "by_type": by_type,
+            "by_student": by_student,
+            "total_events": len(self._events),
+            "unique_students": len(by_student),
+        }
+```
+### Полиморфная обработка
+
+Напишите функцию:
+
+```python
+def render_timeline(events) -> str:
+    """Формирует временную шкалу, вызывая describe() у каждого события."""
+```
+
+Функция не должна проверять конкретный тип каждого события цепочкой `isinstance`. Она должна опираться на общий интерфейс.
+```python
+def render_timeline(events) -> str:
+    """Формирует временную шкалу, вызывая describe() у каждого события."""
+    res=[]
+    for event in sorted(events, key=lambda event: event.created_at):
+        res.append(event.describe())
+    return "\n".join(res)
+```
+
+### Пользовательский протокол
+
+Создайте класс `ScoreView`, который лениво обходит только результаты событий сдачи. Он должен быть отдельным итерируемым объектом и поддерживать повторный обход.
+
+### Демонстрационный сценарий
+
+Создайте не менее:
+
+- трех студентов;
+- десяти событий разных типов;
+- двух попыток сдачи одной работы;
+- выборки событий одного студента;
+- выборки событий одного типа;
+- среза журнала;
+- временной шкалы;
+- расчета статистики по `ScoreView`.
+
+```python
+# 1. Создаём 3 студентов
+s1 = Student("s101", "Иван Петров")
+s2 = Student("s102", "Анна Смирнова")
+s3 = Student("s103", "Дмитрий Соколов")
+
+# 2. Создаём журнал и добавляем 10 событий разных типов (включая 2 попытки сдачи одной работы lab_1 от студента s101)
+journal = CourseJournal()
+
+journal.add_event(AttendanceEvent(s1.student_id, date(2026, 5, 1)))
+journal.add_event(AttendanceEvent(s2.student_id, date(2026, 5, 1)))
+journal.add_event(AttendanceEvent(s3.student_id, date(2026, 5, 1)))
+
+journal.add_event(SubmissionEvent(Submission(s1.student_id, "lab_1", attempt=1, score=65.0)))
+journal.add_event(CommentEvent(s1.student_id, "Нужно доработать проверку инвариантов"))
+journal.add_event(SubmissionEvent(Submission(s1.student_id, "lab_1", attempt=2, score=95.0)))
+
+journal.add_event(SubmissionEvent(Submission(s2.student_id, "lab_1", attempt=1, score=88.5)))
+journal.add_event(CommentEvent(s2.student_id, "Чистый код, отличная работа!"))
+
+journal.add_event(SubmissionEvent(Submission(s3.student_id, "lab_1", attempt=1, score=74.0)))
+journal.add_event(CommentEvent(s3.student_id, "Добавьте тесты для граничных случаев"))
+
+# 3. Выборка событий одного студента (генератор)
+print("=== События студента s103 ===")
+for event in journal.events_for_student("s103"):
+    print(" ", event.describe())
+
+# 4. Выборка событий одного типа (генератор)
+print("\n=== Все комментарии ===")
+for event in journal.events_by_type(CommentEvent):
+    print(" ", event.describe())
+
+# 5. Срез журнала
+print("\n=== Срез журнала [3:6] ===")
+for event in journal[3:6]:
+    print(" ", event.describe())
+
+# 6. Временная шкала (полиморфная обработка)
+print("\n=== Временная шкала всего курса ===")
+print(render_timeline(journal))
+
+# 7. Расчёт статистики по ScoreView (с проверкой повторного обхода)
+scores = ScoreView(journal)
+
+# Первый проход
+count = sum(1 for _ in scores)
+# Второй проход
+total = sum(scores)
+# Третий и четвёртый проходы
+min_score = min(scores)
+max_score = max(scores)
+avg_score = total / count if count else 0.0
+
+print("\n=== Статистика по ScoreView ===")
+print(f"Всего сдач: {count}")
+print(f"Мин: {min_score}, Макс: {max_score}, Средний: {avg_score:.2f}")
+print(f"Повторный обход (список): {list(scores)}")
+```
+В отчете сравните три механизма расширения поведения: наследование, композицию и протоколы Python. Объясните, какой механизм использован в каждой части решения и почему.
+
+Наследование(отношение «является» (is-a)) задаёт строгий общий контракт через базовый класс (ABC) и позволяет переиспользовать общий код.
+
+В композиции(отношение «содержит» (has-a)) один объект включает в себя другие и делегирует им работу. Легко менять части независимо друг от друга.
+
+Протоколы Python(«ведёт себя как» (behaves-like)) подразумевает	реализацию магических методов (__iter__, __len__, __getitem__). Встраивает классы в стандартные функции и синтаксис Python без общего предка.
+
+Наследование - иерархия CourseEvent: SubmissionEvent, AttendanceEvent, CommentEvent:
+Все три класса логически являются событиями курса.
+
+Композиция - Student + Submission, Course + Student, CourseJournal + CourseEvent, SubmissionEvent + Submission, ScoreView + CourseJournal:
+Студент содержит работы, журнал хранит события, а ScoreView оборачивает коллекцию событий.
+
+Протоколы Python - CourseJournal, Student, Course, Submission, ScoreView, render_timeline
+
+### Практическое расширение
+
+Добавьте новый тип `DeadlineEvent`, не изменяя `render_timeline()`. Затем создайте класс `FilteredJournalView`, который принимает журнал и предикат и лениво предоставляет только подходящие события. Покажите фильтрацию через именованную функцию и `lambda`, а также повторный обход представления.
+
+
+Вывод о связи Python Data Model со встроенными операциями языка:
+
+Python Data Model - это единый набор протоколов на основе специальных методов, через который пользовательские классы напрямую интегрируются во встроенные операции, операторы и функции языка.
+То есть реализация магических методов внутри классов позволяет пользовательским объектам вести себя так же, как встроенным коллекциям.
+
+---
+
+## Результаты
+
+После выполнения работы я научился:
+
+- различать iterable и iterator;
+- применять `iter()`, `next()` и протокол `StopIteration`;
+- создавать собственные итераторы и генераторы;
+- объяснять ленивое выполнение и одноразовость генератора;
+- использовать list-, set- и dict-comprehension;
+- проектировать классы с осмысленной ответственностью;
+- применять композицию и наследование;
+- использовать `dataclass`, `@property`, `@classmethod` и `@staticmethod`;
+- реализовывать специальные методы Python Data Model;
+- создавать пользовательский объект, совместимый со стандартными функциями Python.

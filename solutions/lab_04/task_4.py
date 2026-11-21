@@ -114,74 +114,73 @@ class Course:
     def __contains__(self, student_id: str):
         return student_id in self._students
 
-course = Course()
-course.add_student(Student("s101", "Иван Петров"))
-print('s101' in course)
 
-student1 = Student.from_full_name(" s101 ", "  иван   ПЕТРОВ  ")
-print(student1.student_id)  # 's101'
-print(student1.student_name)  # 'Иван Петров'
+if __name__ == "__main__":
+    course = Course()
+    course.add_student(Student("s101", "Иван Петров"))
+    print('s101' in course)
 
-print(student1)
+    student1 = Student.from_full_name(" s101 ", "  иван   ПЕТРОВ  ")
+    print(student1.student_id)  # 's101'
+    print(student1.student_name)  # 'Иван Петров'
 
-print(Student.is_valid_id("s101"))   # True
-print(Student.is_valid_id("s 101"))  # False
+    print(student1)
 
-
-s1 = Submission("s101", "lab_1", attempt=2, score=90.0)
-s2 = Submission("s101", "lab_1", attempt=1, score=75.0)
-s3 = Submission("s101", "lab_2", attempt=1, score=95.0)
-s1_copy = Submission("s101", "lab_1", attempt=2, score=90.0)
-
-# Сравнение по содержимому
-print(s1 == s1_copy)  # True
-print(s1 == s2)       # False
-
-# Сортировка без изменения исходного списка
-student = Student("s101", "Иван Петров")
-student.add_submission(s1)
-student.add_submission(s2)
-student.add_submission(s3)
-
-# Отсортировано по (attempt, score): (1, 75.0), (1, 95.0), (2, 90.0)
-print([(s.attempt, s.score) for s in student.sorted_submissions])
-
-# Исходный порядок сохранён: (2, 90.0), (1, 75.0), (1, 95.0)
-print([(s.attempt, s.score) for s in student.submissions])
+    print(Student.is_valid_id("s101"))   # True
+    print(Student.is_valid_id("s 101"))  # False
 
 
-# Приведите примеры работы стандартных функций `len()`, `iter()` и оператора `in` с созданными объектами.
-course1 = Course()
-s1 = Student("s101", "Иван Петров")
-s2 = Student("s102", "Анна Смирнова")
+    s1 = Submission("s101", "lab_1", attempt=2, score=90.0)
+    s2 = Submission("s101", "lab_1", attempt=1, score=75.0)
+    s3 = Submission("s101", "lab_2", attempt=1, score=95.0)
+    s1_copy = Submission("s101", "lab_1", attempt=2, score=90.0)
 
-course1.add_student(s1)
-course1.add_student(s2)
+    # Сравнение по содержимому
+    print(s1 == s1_copy)  # True
+    print(s1 == s2)       # False
 
-course1.submit(Submission("s101", "lab_1", attempt=1, score=80.0))
-course1.submit(Submission("s101", "lab_1", attempt=2, score=95.0))
-course1.submit(Submission("s102", "lab_1", attempt=1, score=90.0))
+    # Сортировка без изменения исходного списка
+    student = Student("s101", "Иван Петров")
+    student.add_submission(s1)
+    student.add_submission(s2)
+    student.add_submission(s3)
 
-# Функция len() вызывает __len__
-print(len(course1))  # 2 (количество зарегистрированных студентов)
-print(len(s1))      # 2 (количество попыток у студента s1)
+    # Отсортировано по (attempt, score): (1, 75.0), (1, 95.0), (2, 90.0)
+    print([(s.attempt, s.score) for s in student.sorted_submissions])
 
-# Функция iter() и цикл for вызывают __iter__
-# Обход студентов на курсе
-for student in course:
-    print(student.student_name)
-
-# Явное получение итератора по работам студента
-sub_iterator = iter(s1)
-print(next(sub_iterator))  # Submission(student_id='s101', laboratory_id='lab_1', attempt=1, score=80.0, comment='')
-print(next(sub_iterator))  # Submission(student_id='s101', laboratory_id='lab_1', attempt=2, score=95.0, comment='')
-
-# Оператор in вызывает __contains__
-print("s101" in course)  # True
-print("s999" in course)  # False
-
-target = Submission("s101", "lab_1", attempt=2, score=95.0)
-print(target in s1)      # True
+    # Исходный порядок сохранён: (2, 90.0), (1, 75.0), (1, 95.0)
+    print([(s.attempt, s.score) for s in student.submissions])
 
 
-print("Конец части 4")
+    # Примеры работы стандартных функций `len()`, `iter()` и оператора `in` с созданными объектами.
+    course1 = Course()
+    s1 = Student("s101", "Иван Петров")
+    s2 = Student("s102", "Анна Смирнова")
+
+    course1.add_student(s1)
+    course1.add_student(s2)
+
+    course1.submit(Submission("s101", "lab_1", attempt=1, score=80.0))
+    course1.submit(Submission("s101", "lab_1", attempt=2, score=95.0))
+    course1.submit(Submission("s102", "lab_1", attempt=1, score=90.0))
+
+    # Функция len() вызывает __len__
+    print(len(course1))  # 2 (количество зарегистрированных студентов)
+    print(len(s1))      # 2 (количество попыток у студента s1)
+
+    # Функция iter() и цикл for вызывают __iter__
+    # Обход студентов на курсе
+    for student in course:
+        print(student.student_name)
+
+    # Явное получение итератора по работам студента
+    sub_iterator = iter(s1)
+    print(next(sub_iterator))  # Submission(student_id='s101', laboratory_id='lab_1', attempt=1, score=80.0, comment='')
+    print(next(sub_iterator))  # Submission(student_id='s101', laboratory_id='lab_1', attempt=2, score=95.0, comment='')
+
+    # Оператор in вызывает __contains__
+    print("s101" in course)  # True
+    print("s999" in course)  # False
+
+    target = Submission("s101", "lab_1", attempt=2, score=95.0)
+    print(target in s1)      # True
